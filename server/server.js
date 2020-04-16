@@ -1,6 +1,12 @@
 require('./config/config');
 const express = require('express');
+const mongoose = require('mongoose');
+
 const app = express();
+
+
+
+
 
 const bodyParser = require('body-parser');
 
@@ -11,41 +17,21 @@ app.use(bodyParser.urlencoded({ extended: false })); //app.use es un Middleware 
 // parse application/json
 app.use(bodyParser.json());
 
+app.use(require('./routes/usuario'));
 
 
-app.get('/usuario', function(req, res) {
-    res.json('Get Usuario');
-});
-app.post('/usuario', function(req, res) {
-    let body = req.body; // este bodyy aparece cuando el bodyParser se procese cualquier payload que reciban las peticiones 
-
-    if (body.nombre === undefined) {
-        res.status(400).json({
-            ok: false,
-            mesaje: 'El nombre es necesario'
-        });
-    } else {
-        res.json({
-            Persona: body
-        });
-    }
 
 
-});
-app.put('/usuario/:id', function(req, res) {
 
-    let id = req.params.id;
-    res.json({
-        id
+mongoose.connect(process.env.URLDB, { useNewUrlParser: true, useUnifiedTopology: true, useCreateIndex: true },
+    (err, resp) => {
+
+        if (err) throw err;
+
+        console.log('Base de datos ONLINE');
+        //   useNewUrlParser: true,
+        //   useUnifiedTopology: true
     });
-});
-app.delete('/usuario', function(req, res) {
-    res.json('Delete Usuario');
-});
-
-
-
-
 
 
 
