@@ -1,4 +1,5 @@
 const express = require('express');
+
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 
@@ -6,20 +7,20 @@ const { OAuth2Client } = require('google-auth-library');
 const client = new OAuth2Client(process.env.CLIENT_ID);
 
 
-const Usuario = require('../models/usuario');
 
+const Usuario = require('../models/usuario');
 
 const app = express();
 
 
-app.post('/login', (req, res) => { // se recibe un callback
 
-    // primero obtenemos el body (email & password)
-    let body = req.body; // el bojeto req trae el body
+app.post('/login', (req, res) => {
+
+    let body = req.body;
 
     Usuario.findOne({ email: body.email }, (err, usuarioDB) => {
 
-        if (err) { // se colocan retorn para que no siga ejecutando el código
+        if (err) {
             return res.status(500).json({
                 ok: false,
                 err
@@ -35,11 +36,7 @@ app.post('/login', (req, res) => { // se recibe un callback
             });
         }
 
-        // como evaluamos la contraseña. Anteriormente habiamos usado el bcrypt en el método post de usuario password: bcrypt.hashSync(body.password, 10)
-        // tenemos que trata de hacer el proceso inverso pero no podemos porque está encripatado en una sola via 
-        // en ese caso tomamos la contraseña la encriptamos y vemos is eso hace mach.
-        // En este cas hay una función propia del bcrypt llamada bcrypt.compareSync el cual retorna true si la contraseña hace mach
-        // comparamos la contraseña que viene en el body.password contra la contraseña de la base de datos contenida en UsuarioDb.password
+
         if (!bcrypt.compareSync(body.password, usuarioDB.password)) {
             return res.status(400).json({
                 ok: false,
@@ -49,7 +46,6 @@ app.post('/login', (req, res) => { // se recibe un callback
             });
         }
 
-        // usuario: usuarioDB => payload , process.env.SEED, expiresIn: process.env.CADUCIDAD_TOKEN
         let token = jwt.sign({
             usuario: usuarioDB
         }, process.env.SEED, { expiresIn: process.env.CADUCIDAD_TOKEN });
@@ -60,43 +56,44 @@ app.post('/login', (req, res) => { // se recibe un callback
             token
         });
 
+
     });
 
 });
 
-// configuraciones de google
+
+// Configuraciones de Google
 async function verify(token) {
     const ticket = await client.verifyIdToken({
         idToken: token,
-        audience: process.env.CLIENT_ID,
+        audience: process.env.CLIENT_ID, // Specify the CLIENT_ID of the app that accesses the backend
+        // Or, if multiple clients access the backend:
+        //[CLIENT_ID_1, CLIENT_ID_2, CLIENT_ID_3]
     });
     const payload = ticket.getPayload();
-
 
     return {
         nombre: payload.name,
         email: payload.email,
         img: payload.picture,
         google: true
-    };
+    }
 
 }
-// verify().catch(console.error);
+
 
 app.post('/google', async(req, res) => {
 
-    let token = req.body.idtoken; // recibimos el token
+    let token = req.body.idtoken;
 
-    let googleUser = await verify(token) // verificamos el token
-        .catch(e => { // si se verifica correctamente se tendrá un objeto "googleUser" con cierta información del usuario
+    let googleUser = await verify(token)
+        .catch(e => {
             return res.status(403).json({
                 ok: false,
                 err: e
             });
         });
 
-    // se llama a Usuario.findOne para verificar si en la base de datos existe ese un usuario con ese correo
-    // porque si existe y no se ha autenticado por google quiere decir que el usuario uso su correo en el método de autenticación normal
 
     Usuario.findOne({ email: googleUser.email }, (err, usuarioDB) => {
 
@@ -105,9 +102,9 @@ app.post('/google', async(req, res) => {
                 ok: false,
                 err
             });
-        }
+        };
 
-        if (usuarioDB) { // si existe el usuario
+        if (usuarioDB) {
 
             if (usuarioDB.google === false) {
                 return res.status(400).json({
@@ -116,7 +113,7 @@ app.post('/google', async(req, res) => {
                         message: 'Debe de usar su autenticación normal'
                     }
                 });
-            } else { // si se autentificó por google se renueva el token personalizado y se regresa con los datos del usuario
+            } else {
                 let token = jwt.sign({
                     usuario: usuarioDB
                 }, process.env.SEED, { expiresIn: process.env.CADUCIDAD_TOKEN });
@@ -130,36 +127,36 @@ app.post('/google', async(req, res) => {
 
             }
 
-        } else { // si es la primera vez que el usario se autentica
+        } else {
             // Si el usuario no existe en nuestra base de datos
-            let usuario = new Usuario(); // se crea un objeto del esquema usuario
+            let usuario = new Usuario();
 
-            usuario.nombre = googleUser.nombre; // todas las propiedades
+            usuario.nombre = googleUser.nombre;
             usuario.email = googleUser.email;
             usuario.img = googleUser.img;
             usuario.google = true;
             usuario.password = ':)';
 
-            usuario.save((err, usuarioDB) => { // grabar en la base de datos
+            usuario.save((err, usuarioDB) => {
 
-                if (err) { // pr si ocurre un error se dispara
+                if (err) {
                     return res.status(500).json({
                         ok: false,
                         err
                     });
-                }
+                };
 
-                // si no hay errore se genera un nuevo token
                 let token = jwt.sign({
                     usuario: usuarioDB
                 }, process.env.SEED, { expiresIn: process.env.CADUCIDAD_TOKEN });
 
-                // se envian datos con el nuevo token
+
                 return res.json({
                     ok: true,
                     usuario: usuarioDB,
                     token,
                 });
+
 
             });
 
@@ -168,7 +165,11 @@ app.post('/google', async(req, res) => {
 
     });
 
+
 });
 
 
-module.exports = app; // es la función de express
+
+
+
+module.exports = app;
