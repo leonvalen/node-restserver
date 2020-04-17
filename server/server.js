@@ -17,7 +17,10 @@ app.use(bodyParser.urlencoded({ extended: false })); //app.use es un Middleware 
 // parse application/json
 app.use(bodyParser.json());
 
-app.use(require('./routes/usuario'));
+
+//configuracion glorbal de rutas
+app.use(require('./routes/index'));
+
 
 
 
